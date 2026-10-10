@@ -37,22 +37,62 @@ data_lock = threading.Lock()  # Protects usage_data between threads
 
 def get_active_app():
     try:
-        hwnd = win32gui.GetForegroundWindow()  # Get the handle of the active window
-        _, pid = win32process.GetWindowThreadProcessId(hwnd)  # Get the process ID
-        process = psutil.Process(pid)  # Get the process information
-        return process.name()  # Return the name of the active application
+        # Get the active Windows window
+        hwnd = win32gui.GetForegroundWindow()
+
+        # Get the active window title
+        window_title = win32gui.GetWindowText(hwnd).lower()
+
+        # Get the process ID
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
+
+        # Get the process information
+        process = psutil.Process(pid)
+        process_name = process.name().lower()
+
+        # Identify websites from the active browser tab title
+        if "youtube" in window_title:
+            return "YouTube"
+
+        elif "facebook" in window_title:
+            return "Facebook"
+
+        elif "instagram" in window_title:
+            return "Instagram"
+
+        # Identify browsers when another website is active
+        browser_names = {
+            "chrome.exe": "Google Chrome",
+            "brave.exe": "Brave Browser",
+            "msedge.exe": "Microsoft Edge",
+            "firefox.exe": "Mozilla Firefox",
+            "opera.exe": "Opera Browser"
+        }
+
+        if process_name in browser_names:
+            return browser_names[process_name]
+
+        # Return the actual application name for other programs
+        return process.name()
+
     except Exception:
-        return "Unknown"  # Return "Unknown" if unable to get the active application
+        return "Unknown"
+
 
 
 def tracking_loop(my_session):
-    # Runs in a background thread. Does NOT touch the UI.
+    # Runs in a background thread without updating the UI
     while tracking and my_session == session_id:
-        active_app = get_active_app()  # Get the active application
+
+        active_app = get_active_app()
+
         with data_lock:
-            # Increment usage time once per second
-            usage_data[active_app] = usage_data.get(active_app, 0) + 1
-        time.sleep(1)  # Wait for 1 second before checking again
+            usage_data[active_app] = (
+                usage_data.get(active_app, 0) + 1
+            )
+
+        time.sleep(1)
+
 
 
 # Database Storage
